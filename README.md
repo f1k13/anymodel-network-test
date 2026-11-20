@@ -34,3 +34,14 @@ docker compose -p anymodel-xhttp -f compose.yaml -f compose.xhttp.yaml logs --ta
 ```
 
 Для проверки передайте только `runtime/xhttp/reviewer.txt` по личному каналу. Весь каталог `runtime/` исключён из Git. После проверки удалите клиента `reviewer` из `runtime/xhttp/server.json` и выполните `docker compose -p anymodel-xhttp -f compose.yaml -f compose.xhttp.yaml up -d --force-recreate`. Генератор не перезаписывает действующие ключи.
+
+## Нагрузочный прогон на VPS
+
+На хосте с Docker, cgroup v2, Python 3 и `curl` запустите из каталога проекта:
+
+```bash
+CONTAINER=$(docker compose -p anymodel-xhttp -f compose.yaml -f compose.xhttp.yaml ps -q xray)
+python3 scripts/bench.py --container "$CONTAINER" --profile runtime/xhttp/owner.txt --waves 2
+```
+
+Скрипт печатает JSON по каждой ступени. Клиент запускается в отдельном временном контейнере на VPS; такой прогон измеряет работу туннеля и нагрузку на сервер, но не доступность из сети абонента.
