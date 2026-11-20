@@ -1,7 +1,7 @@
 services:
   xray:
     ports: !override
-      - "${XRAY_BIND_IP:-0.0.0.0}:${XRAY_PORT:-24443}:8443/tcp"
+      - "${XRAY_BIND_IP:-0.0.0.0}:${XRAY_PORT:-443}:8443/tcp"
     volumes:
       - type: bind
         source: ./runtime/xhttp/server.json

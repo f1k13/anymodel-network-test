@@ -19,11 +19,11 @@ FLOW = "xtls-rprx-vision"
 def main():
     parser = argparse.ArgumentParser(description="Создать конфигурацию Xray и два клиентских профиля.")
     parser.add_argument("ip", type=ipaddress.IPv4Address, help="Внешний IPv4-адрес сервера")
-    parser.add_argument("--port", type=int, help="Внешний порт (по умолчанию 443 для TCP, 24443 для XHTTP)")
+    parser.add_argument("--port", type=int, help="Внешний порт (по умолчанию 443)")
     parser.add_argument("--transport", choices=("tcp", "xhttp"), default="tcp")
     args = parser.parse_args()
     if args.port is None:
-        args.port = 24443 if args.transport == "xhttp" else 443
+        args.port = 443
     if not 1 <= args.port <= 65535:
         parser.error("порт должен быть в диапазоне 1–65535")
     runtime = RUNTIME / "xhttp" if args.transport == "xhttp" else RUNTIME

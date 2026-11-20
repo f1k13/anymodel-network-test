@@ -13,8 +13,8 @@
         "network": "raw",
         "security": "reality",
         "realitySettings": {
-          "target": "www.microsoft.com:443",
-          "serverNames": ["www.microsoft.com"],
+          "target": "www.bing.com:443",
+          "serverNames": ["www.bing.com"],
           "privateKey": "",
           "shortIds": []
         }
