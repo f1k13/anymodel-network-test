@@ -19,12 +19,18 @@ FLOW = "xtls-rprx-vision"
 def main():
     parser = argparse.ArgumentParser(description="Создать конфигурацию Xray и два клиентских профиля.")
     parser.add_argument("ip", type=ipaddress.IPv4Address, help="Внешний IPv4-адрес сервера")
-    parser.add_argument("--port", type=int, default=443, help="Внешний порт (как XRAY_PORT в Compose)")
+    parser.add_argument("--port", type=int, help="Внешний порт (по умолчанию 443 для TCP, 24443 для XHTTP)")
+    parser.add_argument("--transport", choices=("tcp", "xhttp"), default="tcp")
     args = parser.parse_args()
+    if args.port is None:
+        args.port = 24443 if args.transport == "xhttp" else 443
     if not 1 <= args.port <= 65535:
         parser.error("порт должен быть в диапазоне 1–65535")
-    if RUNTIME.exists() or RUNTIME.is_symlink():
-        parser.error("runtime/ уже существует; действующие ключи и UUID не перезаписаны")
+    runtime = RUNTIME / "xhttp" if args.transport == "xhttp" else RUNTIME
+    if runtime.exists() or runtime.is_symlink():
+        parser.error(f"{runtime.relative_to(ROOT)}/ уже существует; действующие ключи и UUID не перезаписаны")
+    if RUNTIME.is_symlink():
+        parser.error("runtime/ не должен быть символической ссылкой")
 
     image = subprocess.check_output(["docker", "compose", "config", "--images"], cwd=ROOT, text=True).strip()
     output = subprocess.check_output(["docker", "run", "--rm", "--network", "none", image, "x25519"], text=True)
@@ -42,20 +48,33 @@ def main():
         "encryption": "none", "security": "reality", "type": "tcp", "flow": FLOW,
         "sni": reality["serverNames"][0], "fp": "chrome", "pbk": public_key, "sid": short_id,
     })
+    flow = {"flow": FLOW}
+    if args.transport == "xhttp":
+        settings = {"path": "/" + secrets.token_hex(10), "mode": "stream-one"}
+        inbound["streamSettings"].update(network="xhttp", xhttpSettings=settings)
+        params = urlencode({
+            "encryption": "none", "security": "reality", "type": "xhttp", **settings,
+            "sni": reality["serverNames"][0], "fp": "chrome", "pbk": public_key, "sid": short_id,
+        })
+        flow = {}
 
     # Доступ на хосте ограничен правами каталога; контейнеру монтируется только JSON.
-    RUNTIME.mkdir(mode=0o700)
+    if args.transport == "xhttp":
+        RUNTIME.mkdir(mode=0o700, exist_ok=True)
+    runtime.mkdir(mode=0o700)
     for name, label in (("owner", "AnyModel — личный"), ("reviewer", "AnyModel — проверка")):
         client_id = str(uuid.uuid4())
-        inbound["settings"]["clients"].append({"id": client_id, "flow": FLOW, "email": name})
+        inbound["settings"]["clients"].append({"id": client_id, **flow, "email": name})
+        if args.transport == "xhttp":
+            label += " (XHTTP)"
         profile = f"vless://{client_id}@{args.ip}:{args.port}?{params}#{quote(label)}\n"
-        fd = os.open(RUNTIME / f"{name}.txt", os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        fd = os.open(runtime / f"{name}.txt", os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
         with os.fdopen(fd, "w", encoding="utf-8") as file:
             file.write(profile)
-    server = RUNTIME / "server.json"
+    server = runtime / "server.json"
     server.write_text(json.dumps(config, indent=2) + "\n", encoding="utf-8")
     server.chmod(0o644)
-    print("Готово: runtime/server.json, runtime/owner.txt, runtime/reviewer.txt")
+    print(f"Готово: конфигурация и профили в {runtime.relative_to(ROOT)}/")
 
 
 if __name__ == "__main__":
