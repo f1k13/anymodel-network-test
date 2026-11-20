@@ -1,0 +1,35 @@
+{
+  "log": {"loglevel": "warning", "access": "none"},
+  "inbounds": [
+    {
+      "listen": "0.0.0.0",
+      "port": 8443,
+      "protocol": "vless",
+      "settings": {
+        "decryption": "none",
+        "clients": []
+      },
+      "streamSettings": {
+        "network": "raw",
+        "security": "reality",
+        "realitySettings": {
+          "target": "www.microsoft.com:443",
+          "serverNames": ["www.microsoft.com"],
+          "privateKey": "",
+          "shortIds": []
+        }
+      }
+    }
+  ],
+  "outbounds": [
+    {"tag": "direct", "protocol": "freedom"},
+    {"tag": "blocked", "protocol": "blackhole"}
+  ],
+  "routing": {
+    "domainStrategy": "IPOnDemand",
+    "rules": [
+      {"type": "field", "ip": ["geoip:private", "169.254.0.0/16", "fe80::/10"], "outboundTag": "blocked"},
+      {"type": "field", "network": "tcp,udp", "port": "25", "outboundTag": "blocked"}
+    ]
+  }
+}

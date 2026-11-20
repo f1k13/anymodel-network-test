@@ -1,0 +1,21 @@
+services:
+  xray:
+    image: ghcr.io/xtls/xray-core:26.11.9@sha256:9812e382e229e9ed63fd179bf1a4e3fe244c12ff3ae4fd8128745d79c87575ab
+    command: ["run", "-config", "/etc/xray/server.json"]
+    restart: unless-stopped
+    ports:
+      - "${XRAY_BIND_IP:-0.0.0.0}:${XRAY_PORT:-443}:8443/tcp"
+    volumes:
+      - type: bind
+        source: ./runtime/server.json
+        target: /etc/xray/server.json
+        read_only: true
+        bind:
+          create_host_path: false
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
